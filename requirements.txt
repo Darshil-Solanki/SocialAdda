@@ -3,3 +3,6 @@ django-crispy-forms==2.0
 crispy-bootstrap5==0.7
 Pillow==9.4.0
 requests==2.28.2
+channels==4.0.0
+channels-redis==4.0.0
+daphne==4.0.0

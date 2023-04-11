@@ -1,4 +1,4 @@
-from django.shortcuts import render,redirect
+from django.shortcuts import render,redirect,reverse
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate,login,logout
@@ -6,18 +6,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
-from .models import *
-import json
-import requests
 from django.core.mail import send_mail
+from .models import *
+from django.db.models import Q
+import json
 # Create your views here.
 
-def verify_email(email):
-    api_key = 'Your_API_Key'
-    url = f"https://api.zerobounce.net/v2/validate?api_key={api_key}&email={email}"
-    response = requests.get(url)
-    data = response.json()
-    return data.get('status', 'unknown')
+
 
 def home_view(request):
 	if request.user.is_authenticated:
@@ -80,16 +75,15 @@ def signup_view(request):
 		password = request.POST["password"]
 		confirmation = request.POST["confirmation"]
 		checkUser = User.objects.filter(username=username)
-		val_result = verify_email(email)
-		if val_result != "valid":
-			messages.error(request,"You have entered wrong email, Enter your correct email!")
-			return redirect("/signup")
 		checkEmail = User.objects.filter(email=email)
 		if checkUser:
 			messages.error(request,"Username already taken!")
 			return redirect("/signup")
 		elif checkEmail:
 			messages.error(request,"Account already exist with this email!")
+			return redirect("/signup")
+		elif password!=confirmation:
+			messages.error(request,"Password and Confirm password doesn't match!")
 			return redirect("/signup")
 		else:
 			user = User.objects.create_user(username, email, password)
@@ -99,7 +93,10 @@ def signup_view(request):
 				user.profile_pic = profile
 			else:
 				user.profile_pic = "profile_pic/no_pic.png"
-			user.cover = cover           
+			if cover is not None:						
+				user.cover = cover
+			else:
+				user.cover = "covers/no_covers.png"
 			user.save()
 			Follower.objects.create(user=user)
 			#sending account creation email
@@ -133,6 +130,8 @@ def login_view(request):
 
 def logout_view(request):
 	if request.user.is_authenticated:
+		storage = messages.get_messages(request)
+		storage.used=True
 		logout(request)
 		messages.success(request,"Logout Successfully!")
 		return redirect("/")
@@ -381,3 +380,81 @@ def delete_post(request, post_id):
             return HttpResponse("Method must be 'PUT'")
     else:
         return redirect('login')
+
+def search(request):
+    if request.user.is_authenticated:
+        if request.method =="POST":
+            search=request.POST.get("search")
+            if(search==""):
+                users=User.objects.all().exclude(username=request.user.username).order_by("?")
+            else:
+                users = User.objects.filter(
+                Q(username__icontains=search) | 
+                Q(first_name__icontains=search) | 
+                Q(last_name__icontains=search)
+            ).order_by('username')
+                startswith_users = User.objects.filter(
+                    Q(username__istartswith=search[0]) | 
+                    Q(first_name__istartswith=search[0]) | 
+                    Q(last_name__istartswith=search[0])
+                ).exclude(
+                    Q(username__icontains=search) | 
+                    Q(first_name__icontains=search) | 
+                    Q(last_name__icontains=search)
+                ).order_by('username')
+                users = list(users) + list(startswith_users)
+                req_user =User.objects.get(username=request.user.username)
+                if req_user in users:
+                    users.remove(req_user)
+            return render(request,"search.html",{"search_results":users,"search":search,"page":"search"})
+        else:
+            return HttpResponse("Method must be 'POST'")
+    else:
+        return redirect("login")
+def edit_profile(request):
+    if request.user.is_authenticated:
+        if request.method == "POST":
+            user=request.user
+            if(request.POST.get("name-change")=="true"):
+                print("------",request.POST.get("name-change"),"------")
+                user.first_name=request.POST.get("first-name")
+                user.last_name=request.POST.get("last-name")
+                user.save()
+            if(request.POST.get("cover-img-change")=="true"):
+                print("------",request.POST.get("cover-img-change"),"------")
+                cover=request.FILES.get("cover-image-input")
+                if cover is not None:
+                    user.cover=cover
+                else:
+                    user.cover="covers/no_covers.png"
+                user.save()
+            if(request.POST.get("profile-img-change")=="true"):
+                print("------",request.POST.get("profile-img-change"),"------")
+                profile=request.FILES.get("profile-image-input")
+                if profile is not None:
+                    user.profile_pic=profile
+                else:
+                    user.profile_pic="profile_pic/no_pic.png"
+                user.save()
+
+            return redirect(reverse('profile',args=[request.user.username,]))
+        else:
+            return HttpResponse("Method must be 'POST'")
+    else:
+        return redirect("login")
+@csrf_exempt
+def more_suggestions(request):
+    if request.user.is_authenticated:
+        if request.method =="POST":
+            offset=int(request.POST.get('offset',0))
+            usernames=json.loads(request.body)["usernames"]
+            followings=Follower.objects.filter(followers=request.user).values_list("user",flat=True)
+            suggestions = User.objects.exclude(pk__in=followings).exclude(username=request.user.username).exclude(username__in=usernames).order_by("?")[offset:offset+6]
+            if(len(User.objects.all())==len(usernames)+suggestions.count()+1):
+                return JsonResponse({'suggestions':[suggestion.serialize() for suggestion in suggestions],'all_sent':True},safe=False)
+            else:
+                return JsonResponse({'suggestions':[suggestion.serialize() for suggestion in suggestions],'all_sent':False},safe=False)
+        else:
+            return HttpResponse("Method must be 'POST'")
+    else:
+        return redirect("login")

@@ -1,0 +1,54 @@
+{%  extends "ly_main.html" %}
+{% load static %}
+
+{% block title %}Search -SocialAdda{% endblock %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let chatpage = document.querySelector(".contact-table-scroll").dataset.page;
+        if(chatpage !=""){
+            document.querySelector(".right-div").children[0].style.display='none';
+            document.querySelector(".right-div").children[1].style.display='none';
+        }
+    })
+    </script>
+{% endblock %}
+{% block body %}
+<div class="main-div">
+        <div class="left-div">
+            <nav class="head heading">
+                Search Results for -"{{search}}"
+            </nav>
+            <div class="left-div-content">
+                <div class="contact-table-scroll" data-page="{{page}}">
+                    <div>
+                        <div class="space" style="background-color: white;"></div>
+                        <div class="search-user-box">
+                            {% for s_user in search_results %}
+                                <div class="search-user">
+                                    <div>
+                                        <a href="{% url 'profile' s_user.username %}">
+                                            <div class="small-profilepic" style="background-image: url(/media/{{s_user.profile_pic}})"></div>
+                                        </a>
+                                    </div>
+                                    <div class="search-user-details">
+                                        <a href="{% url 'profile' s_user.username %}">
+                                            <div id="user-name">
+                                                <strong>
+                                                    {{s_user.first_name}} {{s_user.last_name}}
+                                                </strong>
+                                            </div>
+                                            <div class="grey">@{{s_user.username}}</div>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+{% endblock %}

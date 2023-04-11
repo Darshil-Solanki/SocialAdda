@@ -33,15 +33,17 @@ ALLOWED_HOSTS = ['localhost']
 # Application definition
 
 INSTALLED_APPS = [
+    'main',
+    'daphne',
+    'chat',
+    'crispy_forms',
+	'crispy_bootstrap5',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-	'main',
-    'crispy_forms',
-	'crispy_bootstrap5',
 ]
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
@@ -74,8 +76,19 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'SocialAdda.wsgi.application'
+#WSGI_APPLICATION = 'SocialAdda.wsgi.application'
+ASGI_APPLICATION = 'SocialAdda.asgi.application'
 
+redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [redis_url],
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases

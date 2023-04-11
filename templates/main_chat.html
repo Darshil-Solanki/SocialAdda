@@ -1,0 +1,88 @@
+{% extends 'ly_main.html' %}
+{% load static %}
+
+{% block title %}Chat{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/index.css' %}">
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let chatpage = document.querySelector(".contact-table-scroll").dataset.page;
+    if(chatpage !=""){
+        document.querySelector(".right-div").children[0].style.display='none';
+        document.querySelector(".right-div").children[1].style.display='none';
+    }
+})
+</script>
+{% endblock %}
+{% block body %}
+<div class="main-div">
+    <div class="left-div">
+        <nav class="head">
+            <div class="col-sm-12">
+                <img src="/media/{{ruser.profile_pic}}" alt="" class="profile-image rounded-circle">
+                <span class="ml-2">{{ruser.username}}</span>
+            </div>
+        </nav>
+        <div class="left-div-content" style="margin-top:0px;">
+            <div class="contact-table-scroll" data-page="{{page}}">
+                <div class="col-sm-12 message-area">
+                    <div class="message-table-scroll">
+                        <table class="table">
+                            <tbody id='chat-body'>
+                                {% for message in messages %}
+                                {% if message.sender == request.user.username %}
+                                <tr>
+                                    <td class="chat-message">
+                                        <p class="bg-send p-2 mt-2 mr-5 shadow-sm text-white float-right rounded">
+                                            {{message.message}}
+                                        </p>
+                                    </td>
+                                    <td class="chat-time">
+                                        <p><small class="p-1 shadow-sm">{{message.timestamp|time:'h:i A'}}</small>
+                                        </p>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td class="chat-message">
+                                        <p class="bg-receive p-2 mt-2 mr-5 shadow-sm text-white float-left rounded">
+                                            {{message.message}}
+                                        </p>
+                                    </td>
+                                    <td class="chat-time">
+                                        <p><small class="p-1 shadow-sm">{{message.timestamp|time:'h:i A'}}</small>
+                                        </p>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="row message-box p-3">
+                        
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="message_input" placeholder="Write message...">
+                        </div>
+                        <div class="col-sm-2 mt-1">
+                            <div class="control">
+                                <button class="btn btn-blue" id="chat-message-submit">Submit</button>
+                            </div>
+                        </div>
+        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{{ruser.id|json_script:"json-username"}}
+{{ruser.username|json_script:"json-username-receiver"}}
+{{request.user.username|json_script:"json-message-username"}}
+<script src="{% static 'js/chat.js' %}"></script>
+{% endblock %}
+
+

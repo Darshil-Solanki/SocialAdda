@@ -1,7 +1,70 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     let active = document.querySelector('.body').dataset.page;
-    document.querySelector("#"+active).classList.add('active');
+    if (active !="" & active!="chat-messages") {
+        document.querySelector("#"+active).classList.add('active');
+    }
+    
+    var loadMore = document.getElementById("more-suggestions");
+    var offset = Number(loadMore.getAttribute("data-offset"));
+    var usernames = Array.from(
+        document.querySelectorAll(".user-details .grey")
+      ).map((el) => el.innerHTML.trim().substr(1));
+
+    loadMore.addEventListener("click", function(event) {
+        event.preventDefault();
+        fetch("/n/more_suggestions",{
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                'usernames': usernames,
+                'offset': offset
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                let suggestions = data.suggestions;
+                let allUsersRetrieved = data.all_sent;
+                // append new suggestions to the list
+                suggestions.forEach(suggestion => {
+                    const suggestionsContainer=document.querySelector(".suggestion-box");
+                    usernames.push(suggestion.username);
+                    var userDiv = document.createElement("div");
+                    userDiv.classList.add("suggestion-user");
+                    userDiv.innerHTML=`
+                    <div>
+                        <a href="{% url 'profile' suggestion.username %}">
+                            <div class="small-profilepic" style="background-image: url(${suggestion.profile_pic})"></div>
+                        </a>
+                    </div>
+                    <div class="user-details">
+                        <a href="{% url 'profile' suggestion.username %}">
+                            <div id="user-name">
+                                <strong>
+                                    ${suggestion.first_name} ${suggestion.last_name}
+                                </strong>
+                            </div>
+                            <div class="grey">@${suggestion.username}</div>
+                        </a>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-info " type="button" onclick="follow_user(this,'${suggestion.username}','suggestion')">Follow</button>
+                    </div>`;
+                    suggestionsContainer.insertBefore(userDiv,suggestionsContainer.lastElementChild)
+
+                });
+                offset += suggestions.length;
+                loadMore.setAttribute("data-offset", offset);
+                if(allUsersRetrieved){
+                    document.getElementById("more-suggestions").style.display='none';
+                }
+            })
+            .catch(error => {
+                console.error(error);
+            });
+    });
 });
 
 function drop_down(event) {
@@ -75,6 +138,118 @@ function delete_post(id) {
         });
     },200);
 }
+function edit_del_img(image){
+    document.querySelector(`#${image}-image-input`).value = '';
+    if(image=="cover"){
+        document.querySelector(`.edit-${image}-image`).style.backgroundImage = 'url("/media/uploadCover.png")';
+    }else{
+        document.querySelector(`.edit-${image}-image`).style.backgroundImage = 'url("/media/uploadProfile.png")';
+    }
+    document.querySelector(".profile-popup").querySelector('.form-action-btns').querySelector('input[type=submit]').disabled = false;
+    document.querySelector(`.${image}-del-img`).style.display="none";
+    document.querySelector('.profile-popup').querySelector(`#${image}-img-change`).value = 'true';
+}
+function remove_profileform(){
+    document.querySelector('.popup').style.display='none';
+    document.querySelector('.body').setAttribute('aria-hidden', 'false');
+    document.querySelector('body').style.overflow = "auto";
+    document.querySelector("#eprofile_form").style.display='none';
+    document.querySelector
+    document.querySelector('#name-change').value = '';
+    let name=document.querySelector("#name").textContent.split(" ");
+    document.querySelector('#first-name').value = name[0];
+    document.querySelector('#last-name').value = name[1];
+    document.querySelector('#cover-img-change').value='';
+    document.querySelector('#profile-img-change').value='';
+    let coverImage=document.querySelector('.cover-image').style.backgroundImage;
+    let profileImage=document.querySelector('.profile-view').querySelector('.profile-image').style.backgroundImage;
+    document.querySelector('.edit-cover-image').style.backgroundImage=coverImage;
+    document.querySelector('.edit-profile-image').style.backgroundImage=profileImage;
+    document.querySelector('#cover-image-input').value='';
+    document.querySelector('#profile-image-input').value='';
+    document.querySelector(".profile-popup").querySelector('.form-action-btns').querySelector('input[type=submit]').disabled = true;
+
+}
+function edit_profile(){
+    let popup=document.querySelector('.popup');
+    popup.style.display='block';
+    document.querySelector('.body').setAttribute('aria-hidden', 'true');
+    document.querySelector('body').style.overflow = "hidden";
+    document.querySelector("#eprofile_form").style.display='block';
+    const inputs = document.querySelector(".edit-profile-popup").querySelectorAll('input[type="text"]');
+    inputs.forEach(input => {
+    input.addEventListener('input', (event) => {
+        document.querySelector('.profile-popup').querySelector('#name-change').value = 'true';
+        document.querySelector(".profile-popup").querySelector('.form-action-btns').querySelector('input[type=submit]').disabled = false;
+    });
+    });
+    document.querySelector('#cover-image-input').onchange = function(){
+        previewProfileFiles('cover')
+    };
+    document.querySelector('#profile-image-input').onchange = function(){
+        previewProfileFiles('profile')
+    };
+    profile_image=document.querySelector(".edit-profile-image").style.backgroundImage;
+    cover_image=document.querySelector(".edit-cover-image").style.backgroundImage;
+    if(cover_image) {
+        document.querySelector('.cover-del-img').addEventListener('click',function(){ edit_del_img('cover')});
+        document.querySelector('.cover-del-img').style.display='block';
+        popup.querySelector('.edit-cover-image').style.display = 'block';
+    }
+    if(profile_image) {
+        document.querySelector('.profile-del-img').addEventListener('click', function(){edit_del_img('profile')});
+        document.querySelector('.profile-del-img').style.display='block';
+    }
+    
+}
+function previewProfileFiles(image) {
+    document.querySelector(`.${image}-spinner`).style.display = 'block';
+    document.querySelector(`.${image}-del-img`).style.display = 'none';
+    var preview = document.querySelector(`.edit-${image}-image`);
+    var file    = document.querySelector(`#${image}-image-input`).files[0];
+    var reader  = new FileReader();
+    
+    reader.onloadend = function () {
+        preview.style.backgroundImage = `url(${reader.result})`;
+        document.querySelector(`#${image}-img-change`).value = 'true';
+    }
+
+    if (file) {
+        document.querySelector(".profile-popup").querySelector('.form-action-btns').querySelector('input[type=submit]').disabled = false;
+        var promise = new Promise(function(resolve, reject){
+            setTimeout(() => {
+                var read = reader.readAsDataURL(file);
+                resolve(read);
+            },500);
+        });
+        promise 
+        .then(function(){
+            document.querySelector(`.${image}-spinner`).style.display = 'none';
+            document.querySelector(`.${image}-del-img`).style.display = 'block';
+            if(image=="cover"){
+                document.querySelector(`.${image}-del-img`).addEventListener('click', function(){ edit_del_img('cover')});
+            }
+            else{
+                document.querySelector(`.${image}-del-img`).addEventListener('click', function(){ edit_del_img('profile')});
+            }
+        })
+        .catch(function () { 
+            console.log('Some error has occured'); 
+            });    
+    }
+    else{
+        document.querySelector(`.${image}-spinner`).style.display = 'none';
+        document.querySelector(`.${image}-del-img`).style.display = 'block';
+        if(image=="cover"){
+            document.querySelector(`.${image}-del-img`).addEventListener('click', function(){ edit_del_img('cover')});
+        }
+        else{
+            document.querySelector(`.${image}-del-img`).addEventListener('click', function(){ edit_del_img('profile')});
+        }
+    }
+
+}
+
 
 function edit_post(element) {
     let post = element.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement;
@@ -154,7 +329,6 @@ function remove_popup() {
     document.querySelector('body').style.overflow = "auto";
     let small_popup = document.querySelector('.small-popup');
     let large_popup = document.querySelector('.large-popup');
-    let login_popup = document.querySelector('.login-popup');
     small_popup.style.display = 'none';
     large_popup.style.display = 'none';
     large_popup.querySelector('#post-text').value = '';
@@ -179,9 +353,6 @@ function previewFile() {
     }
 
     if (file) {
-        //reader.addEventListener('progress', (event) => {
-        //    document.querySelector('#spinner').style.display = 'block';
-        //});
         document.querySelector('.form-action-btns').querySelector('input[type=submit]').disabled = false;
         var promise = new Promise(function(resolve, reject){
             setTimeout(() => {
@@ -189,17 +360,16 @@ function previewFile() {
                 resolve(read);
             },500);
         });
-        promise 
+        promise
             .then(function () { 
                 document.querySelector('#spinner').style.display = 'none';
                 document.querySelector('#del-img').style.display = 'block';
-            })
+            }) 
             .catch(function () { 
                 console.log('Some error has occured'); 
-            });
-        
+            });    
     }
-    else {
+    else{
         document.querySelector('#spinner').style.display = 'none';
         document.querySelector('#del-img').style.display = 'block';
     }
@@ -217,7 +387,6 @@ function del_image() {
 
 function like_post(element) {
     if(document.querySelector('#user_is_authenticated').value === 'False') {
-        login_popup('like');
         return false;
     }
     let id = element.dataset.post_id;
@@ -292,8 +461,8 @@ function follow_user(element, username,origin) {
         if(origin === 'suggestion') {
             element.parentElement.innerHTML = `<button class="btn btn-blue" type="button" onclick="unfollow_user(this,'${username}','suggestion')">Following</button>`;
         }
-        else if(origin === 'edit_page') {
-            element.parentElement.innerHTML = `<button class="btn btn-blue float-right" onclick="unfollow_user(this,'${username}','edit_page')" id="following-btn">Following</button>`;
+        else if(origin === 'profile_page') {
+            element.parentElement.innerHTML = `<button class="btn btn-blue float-right" onclick="unfollow_user(this,'${username}','profile_page')" id="following-btn">Following</button>`;
         }
         if(document.querySelector('.body').dataset.page === 'profile') {
             if(document.querySelector('.profile-view').dataset.user === username) {
@@ -311,8 +480,8 @@ function unfollow_user(element, username,origin) {
         if(origin === 'suggestion') {
             element.parentElement.innerHTML = `<button class="btn btn-outline-info" type="button" onclick="follow_user(this,'${username}','suggestion')">Follow</button>`;
         }
-        else if(origin === 'edit_page') {
-            element.parentElement.innerHTML = `<button class="btn btn-outline-info float-right" onclick="follow_user(this,'${username}','edit_page')">Follow</button>`;
+        else if(origin === 'profile_page') {
+            element.parentElement.innerHTML = `<button class="btn btn-outline-info float-right" onclick="follow_user(this,'${username}','profile_page')">Follow</button>`;
         }
         if(document.querySelector('.body').dataset.page === 'profile') {
             if(document.querySelector('.profile-view').dataset.user === username) {

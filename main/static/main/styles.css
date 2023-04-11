@@ -251,14 +251,58 @@ svg{
     height: 8px;
     background-color: #e6ecf0;
 }
-/*.main-div > div{
-    margin-top: 10px;
-    max-height: 100vh;
+
+
+
+/**Edit Profile Section**/
+.profile-popup{
+    display: none;
+    position: absolute;
+    top: 34px;
+    left: 25%;
+    width: 47.5%;
+    max-height: 120vh;
+    transform: translate(-50%,-50%);
+    background-color: white;
+    padding: 24px 20px 15px 20px;
     overflow: auto;
-}*/
+    border-radius: 17px;
+    animation-name: large_popup;
+    animation-duration: .2s;
+    animation-fill-mode: forwards;
+}
+.edit-cover-image{
+    height: 210px!important;
+    width:610px!important;
+}
 
-
-
+.close-button{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px;
+    cursor: pointer;
+    z-index: 2;
+}
+.p_c_btn{
+    position: absolute;
+    left: 135px;
+    top: 110px;
+}
+.close-button:hover, .p_c_btn:hover{
+    background-color: rgba(0, 0, 0, 0.5);
+}
+.profile-popup .form-action-btns{
+    justify-content: space-between;
+}
 /********** Profile Section **********/
 .cover-image{
     height: 210px;
@@ -266,6 +310,11 @@ svg{
     background-position: center;
     background-repeat: no-repeat;
     background-color: #ccd6dd;
+}
+.profile-image-list{
+    height: 40px;
+    width: 40px;
+    position: static;
 }
 .profile-image{
     width: 160px;
@@ -588,12 +637,15 @@ svg{
     padding-left: 1.5vw;
     padding-right: 1.5vw;
 }
-.suggestion-box, .guest-box{
+.search-user-box{
+    overflow:hidden;
+}
+.suggestion-box{
     border-radius: 15px;
     overflow: hidden;
     background-color: #f5f8fa;
 }
-.user-details #user-name:hover{
+.user-details #user-name:hover,.search-user-details #user-name:hover{
     text-decoration: underline;
 }
 .suggestion-header{
@@ -602,22 +654,22 @@ svg{
     font-weight: 800;
     border-bottom: .5px solid #e6ecf0;
 }
-.suggestion-user{
+.suggestion-user, .search-user{
     display: flex;
     padding: 10px 15px;
     font-size: .9em;
     border-bottom: .5px solid #e6ecf0;
 }
-.suggestion-user:hover{
+.suggestion-user:hover,.search-user:hover{
     background-color: #edf0f4;
     cursor: pointer;
     transition-duration: .2s;
 }
-.suggestion-user  a{
+.suggestion-user  a,.search-user a{
     color: black;
     text-decoration: none;
 }
-.user-details{
+.user-details,.search-user-details{
     flex: 1;
     line-height: 1.1em;
     padding: 5px 0px 7px 0px;
@@ -745,11 +797,6 @@ svg{
     margin-left: 10px;
 }
 
-/*.blackout{
-    width: 100vw;
-    height: 100vh;
-    z-index: 10000;
-}*/
 
 ::-webkit-scrollbar-track {
     background: none;

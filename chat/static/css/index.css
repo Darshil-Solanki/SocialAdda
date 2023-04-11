@@ -1,0 +1,39 @@
+.chat-top {
+    background-color: #ffffff;
+    min-height: 50px;
+}
+.row{
+    margin-right:0px;
+    margin-left:0px;
+}
+.bg-send{
+    background-color: #5badff;
+
+}
+.bg-receive{
+    background-color: #bdbdbd;
+}
+.profile-image {
+    height: 40px;
+    width: 40px;
+    position: static;
+}
+.chat-message{
+    border-top: 0px!important;
+}
+.chat-time{
+    border-top: 0px!important;
+    width:90px;
+}
+.message-area {
+    min-height: 600px;
+}
+
+.message-table-scroll {
+    overflow-y: scroll;
+    height: 500px;
+}
+
+.message-box {
+    background-color: #ededed;
+}

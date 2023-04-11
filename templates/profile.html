@@ -9,15 +9,15 @@
         <div class="profile-details">
             <div>
                 {% if user.username == username.username %}
-                    <button class="btn btn-outline-info float-right" id="edit-profile-btn">Edit Profile</button>
+                    <button class="btn btn-outline-info float-right" id="edit-profile-btn" onclick="edit_profile()">Edit Profile</button>
                 {% elif is_follower %}
-                    <button class="btn btn-blue float-right" onclick="unfollow_user(this,'{{username.username}}','edit_page')" id="following-btn">Following</button>
+                    <button class="btn btn-blue float-right" onclick="unfollow_user(this,'{{username.username}}','profile_page')" id="following-btn">Following</button>
                 {% else %}
-                    <button class="btn btn-outline-info float-right" onclick="follow_user(this,'{{username.username}}','edit_page')" >Follow</button>
+                    <button class="btn btn-outline-info float-right" onclick="follow_user(this,'{{username.username}}','profile_page')" >Follow</button>
                 {% endif %}
             </div>
             <div class="details-data">
-                <h5>{{username.first_name}} {{username.last_name}}</h5>
+                <h5 id="name">{{username.first_name}} {{username.last_name}}</h5>
                 <div class="grey">@{{username.username}}</div>
                 <div class="bio">
                     {% if username.bio is not None %}

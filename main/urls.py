@@ -60,6 +60,9 @@ urlpatterns = [
     path("<str:username>/follow", views.follow, name="followuser"),
     path("<str:username>/unfollow", views.unfollow, name="unfollowuser"),
     path("n/post/<int:post_id>/edit", views.edit_post, name="editpost"),
+    path("n/edit_profile",views.edit_profile,name="edit_profile"),
+    path("n/more_suggestions",views.more_suggestions,name="more_suggestions"),
+    path("search/",views.search,name="search"),
 
     path('password_reset/', PasswordResetView.as_view(), name='password_reset'),
     path('password_reset/done/', PasswordResetDoneView.as_view(), name='password_reset_done'),

@@ -26,8 +26,8 @@
 }
 
 .user-box{
-    background-color: #fff;
     width: 45%;
+    background-color: #fff;
     border-radius: 5px;
     margin-top: 10vh;
     margin-left: auto;
@@ -35,6 +35,11 @@
     padding: 10px 50px 10px 50px;
 }
 
+@media only screen and (max-width: 768px) {
+    .user-box {
+        width: auto;
+    }
+}
 .user-box form > div{
     margin-left: 10px;
     margin-right: 10px;

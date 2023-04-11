@@ -62,7 +62,53 @@
                     </div>
                 </div>
             </div>
-            
+            <div class="profile-popup" id="eprofile_form">
+                <div class="form-area">
+                    <form action="{% url 'edit_profile' %}" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="edit-profile-popup">
+                            <div class="cover-image-area">
+                                <label for="cover-image-input" style="cursor: pointer;">
+                                    <div id='img-div'  class="edit-cover-image" style="background-image: url(/media/{{username.cover}})">
+                                        <button id="del-img" class="cover-del-img" type='button'>
+                                            <svg width="1.55em" height="1.55em" viewBox="0 0 24 24" class="r-jwli3a r-4qtqp9 r-yyyyoo r-1q142lx r-50lct3 r-dnmrzs r-bnwqim r-1plcrui r-lrvibr r-1srniue" fill="#fff">
+                                                <g><path d="M13.414 12l5.793-5.793c.39-.39.39-1.023 0-1.414s-1.023-.39-1.414 0L12 10.586 6.207 4.793c-.39-.39-1.023-.39-1.414 0s-.39 1.023 0 1.414L10.586 12l-5.793 5.793c-.39.39-.39 1.023 0 1.414.195.195.45.293.707.293s.512-.098.707-.293L12 13.414l5.793 5.793c.195.195.45.293.707.293s.512-.098.707-.293c.39-.39.39-1.023 0-1.414L13.414 12z"></path></g>
+                                            </svg>
+                                        </button>
+                                        <img src="{% static 'main/images/spinner.gif' %}" id='spinner' class="cover-spinner" height="70px">
+                                    </div>
+                                </label>
+                                <input type="hidden" id="cover-img-change" name="cover-img-change" value="false"></input>
+                                <input type="file" id="cover-image-input" name="cover-image-input" accept="image/jpeg,image/png,image/webp" style="display: none;">
+                            </div>
+                            <div class="profile-image-area">
+                                <label for="profile-image-input" style="cursor: pointer;">
+                                    <div class="profile-image edit-profile-image" style="background-image: url(/media/{{username.profile_pic}})">
+                                        <button id="del-img" class="profile-del-img" type='button'>
+                                            <svg width="1.55em" height="1.55em" viewBox="0 0 24 24" class="r-jwli3a r-4qtqp9 r-yyyyoo r-1q142lx r-50lct3 r-dnmrzs r-bnwqim r-1plcrui r-lrvibr r-1srniue" fill="#fff">
+                                                <g><path d="M13.414 12l5.793-5.793c.39-.39.39-1.023 0-1.414s-1.023-.39-1.414 0L12 10.586 6.207 4.793c-.39-.39-1.023-.39-1.414 0s-.39 1.023 0 1.414L10.586 12l-5.793 5.793c-.39.39-.39 1.023 0 1.414.195.195.45.293.707.293s.512-.098.707-.293L12 13.414l5.793 5.793c.195.195.45.293.707.293s.512-.098.707-.293c.39-.39.39-1.023 0-1.414L13.414 12z"></path></g>
+                                            </svg>
+                                        </button>
+                                        <img src="{% static 'main/images/spinner.gif' %}" id='spinner' class="profile-spinner" height="70px">
+                                    </div>
+                                </label>
+                                <input type="hidden" id="profile-img-change" name="profile-img-change" value="false"></input>
+                                <input type="file" id="profile-image-input" name="profile-image-input" accept="image/jpeg,image/png,image/webp" style="display: none;">
+                            </div>
+                            <input type="hidden" id="name-change" name="name-change" value="false"></input>
+                            <input type="text" class="form-control inp" id="first-name" name="first-name" placeholder="First Name" value="{{username.first_name}}">
+                            <input type="text" class="form-control inp" id="last-name" name="last-name" placeholder="Last Name" value="{{username.last_name}}">
+                        </div>
+                        <hr>
+                        <div class="form-action-btns">
+                            <div>
+                                <button class="btn btn-light float-right cancel-post" type="button" onclick="remove_profileform()">Cancel</button>
+                                <input type="submit" class="btn btn-blue float-right submit-btn" value="&nbsp;Edit&nbsp;" disabled>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
         <div class="body" data-page="{{page}}">
             <div class="sidenav">
@@ -115,7 +161,18 @@
 										</div>
 									</a>
 								</li>
-								<li class="nav-item" id="logout">
+								<li class="nav-item" id="chat-index">
+									<a href="{% url 'chathome' %}" class="nav-link">
+										<div>
+                                            <svg width="1.5em" height="1.5em" viewBox="0 0 1024 1024" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                                <path fill-rule="evenodd" d="m174.72 855.68 135.296-45.12 23.68 11.84C388.096 849.536 448.576 864 512 864c211.84 0 384-166.784 384-352S723.84 160 512 160 128 326.784 128 512c0 69.12 24.96 139.264 70.848 199.232l22.08 28.8-46.272 115.584zm-45.248 82.56A32 32 0 0 1 89.6 896l58.368-145.92C94.72 680.32 64 596.864 64 512 64 299.904 256 96 512 96s448 203.904 448 416-192 416-448 416a461.056 461.056 0 0 1-206.912-48.384l-175.616 58.56z"/>
+                                                <path fill-rule="evenodd" d="M352 576h320q32 0 32 32t-32 32H352q-32 0-32-32t32-32zm32-192h256q32 0 32 32t-32 32H384q-32 0-32-32t32-32z"/>
+                                            </svg>
+											&nbsp;&nbsp;Chat
+										</div>
+									</a>
+								</li>
+                                <li class="nav-item" id="logout">
 									<a href="{% url 'logout' %}" class="nav-link">
 										<div>
 											<svg width="1.5em" height="1.5em" viewBox="0 0 16 16" class="bi bi-door-open" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -157,7 +214,8 @@
 
             <div class="right-div">
                 <nav class="head">
-                    <form action="#">
+                    <form action="{% url 'search' %}" method="POST">
+                        {% csrf_token %}
                         <div class="search-div">
                             <div>
                                 <svg width="1em" height="1.6em" viewBox="0 0 16 6" class="bi bi-search" fill="#6d7e8c" xmlns="http://www.w3.org/2000/svg">
@@ -165,7 +223,7 @@
                                     <path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/>
                                 </svg>
                             </div>
-                            <input type="text" name="query" id="search-box" placeholder="Search SocialAdda">
+                            <input type="text" name="search" id="search-box" placeholder="Search SocialAdda">
                         </div>
                     </form>
                 </nav>
@@ -202,9 +260,9 @@
 									<span class="grey" style="font-size: .9em;">No suggestions available.</span>
 								</div>
 						{% endfor %}
-						<div class="suggestion-footer">
-							<a href="#">Show more</a>
-						</div>
+                        <div class="suggestion-footer">
+                            <a href="#" id="more-suggestions" data-offset="{{ suggestions|length }}">Show more</a>
+                        </div>
 					</div>
                 </div>
             </div>
