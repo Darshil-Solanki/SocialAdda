@@ -11,5 +11,3 @@ pip install -r requirements.txt
 For Windows user i have added Redis installer in project this is third party installer from [here](https://github.com/tporadowski/redis/releases)
 
 This project is live over [here](https://darshil.pythonanywhere.com)
-
-are you a css master please help me fix responsive issue of my web.
