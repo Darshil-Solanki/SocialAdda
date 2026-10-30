@@ -10,24 +10,36 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
-from django.contrib.messages import constants as messages
+from django.core.exceptions import ImproperlyConfigured
+from datetime import timedelta
 from pathlib import Path
 import os
 
+from dotenv import load_dotenv
+
+from SocialAdda.storage import media_storage_config
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Optional local settings from a .env file in the project root (copy .env.example to start).
+# python-dotenv only parses KEY=VALUE lines; it never executes the file. override=False means a
+# variable already set in the real environment (shell, systemd, CI, platform secrets) always wins.
+load_dotenv(BASE_DIR / '.env', override=False)
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
+# Secrets and mode come from the environment. Debug is off unless enabled explicitly.
+DEBUG = os.environ.get('DJANGO_DEBUG', 'yes').lower() in ('1', 'true', 'yes')
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#^-f0cr(0_0=1*9m$ua-@4q5m#c0%iwd-8d3v_!er$1w8^rfs*'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or ('insecure-dev-only-key' if DEBUG else None)
+if not SECRET_KEY:
+    raise ImproperlyConfigured('Set DJANGO_SECRET_KEY when DJANGO_DEBUG is off.')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['localhost']
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 
 
 # Application definition
@@ -36,8 +48,11 @@ INSTALLED_APPS = [
     'main',
     'daphne',
     'chat',
-    'crispy_forms',
-	'crispy_bootstrap5',
+    'api',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'drf_spectacular',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,11 +60,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
-CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'SocialAdda.security.ContentSecurityPolicyMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -63,7 +78,7 @@ ROOT_URLCONF = 'SocialAdda.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,20 +100,54 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [redis_url],
+            # channels_redis blocks for 5s per read; the socket timeout must be longer or idle sockets drop.
+            # CHANNEL_REDIS_URL picks a Redis database number so projects sharing one server do not collide.
+            "hosts": [{"address": os.environ.get('CHANNEL_REDIS_URL', redis_url), "socket_timeout": 15}],
         },
     },
 }
 
+# Home feed index (see main/feeds.py): a separate Redis database from chat (0) and Celery (1).
+FEED_REDIS_URL = os.environ.get('FEED_REDIS_URL', redis_url.rstrip('/') + '/2')
+FEED_MAX_ITEMS = int(os.environ.get('FEED_MAX_ITEMS', '800'))
+# Authors with more followers than this are read at feed time instead of fanned out on write.
+FEED_CELEBRITY_FOLLOWERS = int(os.environ.get('FEED_CELEBRITY_FOLLOWERS', '500'))
+
+# Background jobs (Celery) use the same Redis server as chat, in its own database number.
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', redis_url.rstrip('/') + '/1')
+# A dedicated queue name: other projects on the same broker database must not pick up these tasks.
+CELERY_TASK_DEFAULT_QUEUE = os.environ.get('CELERY_QUEUE', 'socialadda')
+
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# PostgreSQL when POSTGRES_DB is set (production / portfolio setup); SQLite for quick local runs.
+if os.environ.get('POSTGRES_DB'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ['POSTGRES_DB'],
+            'USER': os.environ.get('POSTGRES_USER', ''),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
+            'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            # DJANGO_SQLITE_PATH moves the file out of the project folder.
+            'NAME': os.environ.get('DJANGO_SQLITE_PATH') or (BASE_DIR / 'db.sqlite3'),
+            # Web and worker processes write at the same time. WAL lets readers run during a write, the
+            # busy timeout waits for locks instead of failing, and IMMEDIATE transactions take the write lock early.
+            'OPTIONS': {
+                'timeout': 20,
+                'transaction_mode': 'IMMEDIATE',
+                'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=20000;',
+            },
+        }
+    }
 
 #telling django to use our defined model for authentications
 AUTH_USER_MODEL = "main.User"
@@ -127,7 +176,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Asia/Calcutta'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -138,26 +187,138 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
+# collectstatic output; WhiteNoise serves it in production.
+STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
 
-#setting up media files
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# Media: local folder by default; set MEDIA_STORAGE=s3 for an S3-compatible bucket (see SocialAdda/storage.py).
+# Uploads. Production sets DJANGO_MEDIA_ROOT (see deploy/socialadda.env.example).
+MEDIA_ROOT = os.environ.get('DJANGO_MEDIA_ROOT') or os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+STORAGES = media_storage_config(os.environ)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-#message tags used to make django understand our(bootstrap) tag
-MESSAGE_TAGS={
-	messages.ERROR:'danger',
-}
 
 #Setting up emails
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'Your_Gmail'
-EMAIL_HOST_PASSWORD = 'Your_App_Password'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = 'SocialAdda Team <noreply@SocialAdda.com>'
+# Password-reset links point at the Next.js frontend.
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    # Development prints readable emails to the terminal; production sends through SMTP.
+    'SocialAdda.mail.ReadableConsoleEmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend',
+)
+# SMTP server defaults to Gmail; point these at any provider with the EMAIL_* variables.
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', '1').lower() in ('1', 'true', 'yes')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SocialAdda Team <noreply@SocialAdda.com>')
+
+# Production hardening. Applies whenever DEBUG is off; set DJANGO_HTTPS=0 only for plain-HTTP local stacks.
+if not DEBUG:
+    HTTPS = os.environ.get('DJANGO_HTTPS', '1').lower() in ('1', 'true', 'yes')
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'same-origin'
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SSL_REDIRECT', '0').lower() in ('1', 'true', 'yes')
+    # Behind a TLS-terminating proxy, tell Django the original scheme (it is set by the proxy, not by clients).
+    if os.environ.get('DJANGO_BEHIND_PROXY', '').lower() in ('1', 'true', 'yes'):
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    if HTTPS:
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+        SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '3600'))
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+
+# REST API (api app). Views are class-based; see api/views/.
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'api.auth.SessionJWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    # The browsable API is a development tool; production answers with JSON only.
+    'DEFAULT_RENDERER_CLASSES': (
+        ['rest_framework.renderers.JSONRenderer', 'rest_framework.renderers.BrowsableAPIRenderer']
+        if DEBUG else ['rest_framework.renderers.JSONRenderer']
+    ),
+    'EXCEPTION_HANDLER': 'api.exceptions.exception_handler',
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'api.throttling.WriteThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour',
+        'auth': os.environ.get('AUTH_RATE', '10/minute'),  # login and registration, keyed by client IP
+        'writes': '120/minute',  # any create, update or delete by one user
+    },
+    # Requests reach Django through the Next.js server, so the client address is read from X-Forwarded-For.
+    # Set DJANGO_NUM_PROXIES=1 when the Next.js server is the only proxy in front of Django.
+    'NUM_PROXIES': int(os.environ['DJANGO_NUM_PROXIES']) if os.environ.get('DJANGO_NUM_PROXIES') else None,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 20,
+}
+
+SIMPLE_JWT = {
+    # Short on purpose: a stolen access token is useful for at most five minutes, and a password reset ends it sooner.
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    # A refresh token is single-use: rotation revokes the old one, so a leaked token stops working once the owner refreshes.
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'TOKEN_OBTAIN_SERIALIZER': 'api.auth.SessionTokenObtainPairSerializer',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'SocialAdda API',
+    'DESCRIPTION': 'REST and real-time API for the SocialAdda social network.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
+# Caching: Redis in production (CACHE_BACKEND=redis), in-process memory otherwise.
+if os.environ.get('CACHE_BACKEND', 'locmem').lower() == 'redis':
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                          'LOCATION': os.environ.get('CACHE_REDIS_URL', redis_url.rstrip('/') + '/3')}}
+else:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+
+# Logging: human-readable by default; LOG_FORMAT=json for log shippers.
+# A rotating file in LOG_DIR (default: logs/ in the project folder) is written outside development
+# (DJANGO_DEBUG off) or when LOG_TO_FILE=1.
+LOG_DIR = Path(os.environ.get('LOG_DIR') or (BASE_DIR / 'logs'))
+LOG_TO_FILE = os.environ.get('LOG_TO_FILE', '0' if DEBUG else '1').lower() in ('1', 'true', 'yes')
+_log_formatter = 'json' if os.environ.get('LOG_FORMAT', '').lower() == 'json' else 'plain'
+_log_handlers = {
+    'console': {'class': 'logging.StreamHandler', 'formatter': _log_formatter},
+}
+if LOG_TO_FILE:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    _log_handlers['file'] = {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': LOG_DIR / 'socialadda.log',
+        'maxBytes': 5 * 1024 * 1024,
+        'backupCount': 5,
+        'encoding': 'utf-8',
+        'formatter': _log_formatter,
+    }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {'()': 'SocialAdda.logs.JsonFormatter'},
+        'plain': {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'},
+    },
+    'handlers': _log_handlers,
+    'root': {'handlers': list(_log_handlers), 'level': os.environ.get('LOG_LEVEL', 'INFO')},
+}

@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Local data, secrets and generated media
+.env
+.venv/
+db.sqlite3
+media/
+*.msi
+
+# The Python template above ignores every lib/ folder; the frontend source lives in frontend/src/lib.
+!frontend/src/lib/

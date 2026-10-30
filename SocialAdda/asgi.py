@@ -1,27 +1,31 @@
 """
 ASGI config for SocialAdda project.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/4.1/howto/deployment/asgi/
+HTTP goes to Django; WebSocket connections go through the chat routing.
+Django must be set up before any module that imports models is loaded.
 """
 
 import os
 
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-from .routing import websocket_urlpatterns
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chat_project.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'SocialAdda.settings')
+django_asgi_app = get_asgi_application()
+
+from channels.auth import AuthMiddlewareStack  # noqa: E402
+from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
+from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
+
+from .middleware import JwtAuthMiddleware  # noqa: E402
+from .routing import websocket_urlpatterns  # noqa: E402
 
 application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
-        URLRouter(
-            websocket_urlpatterns
+    'http': django_asgi_app,
+    'websocket': AllowedHostsOriginValidator(
+        AuthMiddlewareStack(
+            JwtAuthMiddleware(
+                URLRouter(websocket_urlpatterns)
+            )
         )
     ),
 })
-

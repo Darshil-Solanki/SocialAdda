@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+/* Dark styles apply when <html> has the class "dark". The class comes from the sa_theme cookie (set by the
+   ThemeToggle button) or, when no choice was made, from the device setting (see app/layout.tsx). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
